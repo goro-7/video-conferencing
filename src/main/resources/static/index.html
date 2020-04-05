@@ -14,15 +14,21 @@
 <div class="container text-center">
 
     <h3>Janus Room</h3>
-    <button id="connect" onclick="startVideo()" type="button" class="btn btn-primary mb-4">Start</button>
-    <br/>
+    <button id="connect" onclick="connect()" type="button" class="btn btn-primary mb-4">Connect</button>
+    <button id="disconnect" onclick="disconnectStream()" type="button" class="btn btn-primary mb-4">Disconnect</button>
+
     <video id="video" type="video/mp4" controls="Volume" class="embed-responsive-item" height="400" >
+        Your browser does not support the video tag.
+    </video>
+
+    <video id="video1" type="video/mp4" controls="" class="embed-responsive-item" height="400" >
         Your browser does not support the video tag.
     </video>
 
 </div>
 
 <script type="text/javascript" src="js/index.js"></script>
+<script type="text/javascript" src="js/stream.js"></script>
 
 </body>
 

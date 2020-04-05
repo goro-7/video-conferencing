@@ -9,16 +9,28 @@ $(window).on("unload", function (e) {
 });
 
 const video = document.getElementById('video');
+let webSocket;
+let canConnect = true;
 
+function connect() {
+ canConnect=true;
+ connectStream();
+ startOutgoingStream();
+}
 
-function startVideo() {
-    let webSocket;
+function connectStream() {
+
+    if(!canConnect){
+        console.log("Flag off , skipping connect ", canConnect);
+    }
+
     try {
         webSocket = new WebSocket(((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host + "/ws");
         console.log("webSocket", webSocket);
     } catch (error) {
         console.log('WebSocket Error ', error);
         $("#openMessage").text("websocket error : " + error);
+        connectStream();
     }
 
     webSocket.onopen = function () {
@@ -31,6 +43,8 @@ function startVideo() {
     webSocket.onerror = function (error) {
         console.log('WebSocket Error', error);
         $("#openMessage").text("websocket error : " + error);
+        console.log('Attempting reconnect ...')
+        connectStream();
     };
 
     // Log messages from the server
@@ -48,7 +62,12 @@ function toFile(blob) {
     video.setAttribute('src', 'video.mp4');
     video.play();
 }
+
 function playBlobAsVideo(blob) {
     video.src = window.URL.createObjectURL(blob);
     video.play();
+}
+
+function disconnectStream() {
+    canConnect = false;
 }

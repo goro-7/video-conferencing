@@ -5,8 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
@@ -17,7 +15,6 @@ import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.nio.file.Paths;
 import java.util.function.Function;
 
 @Slf4j
@@ -26,7 +23,7 @@ import java.util.function.Function;
 public class WebSocketHandlerImpl implements WebSocketHandler {
     public static String PATH = "ws";
     private final ObjectMapper objectMapper;
-    @Value("classpath:/video.mp4")
+    @Value("classpath:/holi.mp4")
     private Resource resourceFile;
 
     @Override

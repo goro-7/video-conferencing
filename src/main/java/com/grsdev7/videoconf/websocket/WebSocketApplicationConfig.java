@@ -15,6 +15,8 @@ import org.springframework.web.reactive.socket.server.upgrade.ReactorNettyReques
 
 import java.util.Map;
 
+import static org.springframework.core.Ordered.HIGHEST_PRECEDENCE;
+
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
@@ -26,7 +28,7 @@ public class WebSocketApplicationConfig {
         Map<String, WebSocketHandler> map = Map.of(WebSocketHandlerImpl.PATH, webSocketHandler);
         SimpleUrlHandlerMapping mapping = new SimpleUrlHandlerMapping();
         mapping.setUrlMap(map);
-        mapping.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        mapping.setOrder(HIGHEST_PRECEDENCE);
         log.info("Handler mapping : {}", mapping);
         return mapping;
     }
