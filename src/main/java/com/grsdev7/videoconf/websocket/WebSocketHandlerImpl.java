@@ -1,8 +1,8 @@
-package com.grsdev7.covid19.Covid19Soln1.websocket;
+package com.grsdev7.videoconf.websocket;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.grsdev7.covid19.Covid19Soln1.publisher.NewOpenItemsPeriodPublisher;
+import com.grsdev7.videoconf.publisher.NewOpenItemsPeriodPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.FileSystemResource;

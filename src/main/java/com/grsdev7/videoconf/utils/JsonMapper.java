@@ -1,4 +1,4 @@
-package com.grsdev7.covid19.Covid19Soln1.utils;
+package com.grsdev7.videoconf.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

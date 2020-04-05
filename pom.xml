@@ -8,11 +8,11 @@
         <version>2.3.0.M3</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.grsdev7.covid19</groupId>
-    <artifactId>Covid19Soln1</artifactId>
+    <groupId>com.grsdev7.videoconf</groupId>
+    <artifactId>video-conferencing</artifactId>
     <version>1.1</version>
-    <name>Covid19Soln1</name>
-    <description>Covid19 (corona virus) pandemic management solution project 1</description>
+    <name>VideoConferencing</name>
+    <description>Demo website for video conference</description>
 
     <properties>
         <java.version>14</java.version>
@@ -22,14 +22,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-mongodb-reactive</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
         <dependency>
@@ -48,6 +40,7 @@
             <scope>runtime</scope>
             <optional>true</optional>
         </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -90,11 +83,7 @@
             <artifactId>reactor-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>de.flapdoodle.embed</groupId>
-            <artifactId>de.flapdoodle.embed.mongo</artifactId>
-            <scope>test</scope>
-        </dependency>
+
     </dependencies>
 
     <build>

@@ -1,4 +1,4 @@
-package com.grsdev7.covid19.Covid19Soln1.websocket;
+package com.grsdev7.videoconf.websocket;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

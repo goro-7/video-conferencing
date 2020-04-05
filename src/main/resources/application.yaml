@@ -1,7 +1,2 @@
 server:
   port: 80
-spring:
-  rsocket:
-    server:
-      mapping-path: /rsocket
-      transport: websocket
