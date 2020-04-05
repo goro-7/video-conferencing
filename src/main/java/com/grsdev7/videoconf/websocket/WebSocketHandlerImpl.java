@@ -2,10 +2,12 @@ package com.grsdev7.videoconf.websocket;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.grsdev7.videoconf.publisher.NewOpenItemsPeriodPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.core.io.buffer.DataBufferUtils;
@@ -22,10 +24,10 @@ import java.util.function.Function;
 @Component
 @RequiredArgsConstructor
 public class WebSocketHandlerImpl implements WebSocketHandler {
-    public static final String MEDIA_FILE = "/Users/gaurav.salvi/Downloads/holi.mp4";
     public static String PATH = "ws";
-    private final NewOpenItemsPeriodPublisher publisher;
     private final ObjectMapper objectMapper;
+    @Value("classpath:/video.mp4")
+    private Resource resourceFile;
 
     @Override
     public Mono<Void> handle(WebSocketSession webSocketSession) {
@@ -35,20 +37,12 @@ public class WebSocketHandlerImpl implements WebSocketHandler {
                 .doOnNext(message -> log.info("== Received message : {}", message.getPayloadAsText()))
                 .then();
 
-        // response
-/*        Flux<String> sourceFlux = //Flux.from(publisher).log();
-                Flux.interval(Duration.ofSeconds(1))
-                        .map(num -> num.toString())
-                        .log();*/
-
-
-        Flux<Function<DataBufferFactory, DataBuffer>> sourceFlux = DataBufferUtils.read(new FileSystemResource(Paths.get(MEDIA_FILE)),
+        Flux<Function<DataBufferFactory, DataBuffer>> sourceFlux = DataBufferUtils.read(resourceFile,
                 webSocketSession.bufferFactory(),
                 429496729)
                 .map(dataBuffer -> dataBuffer.asByteBuffer())
                 .log()
-                .map(byteBuffer -> (DataBufferFactory dbf) -> dbf.wrap(byteBuffer))
-                ;
+                .map(byteBuffer -> (DataBufferFactory dbf) -> dbf.wrap(byteBuffer));
 
         Mono<Void> outputMono = webSocketSession.send(sourceFlux.map(webSocketSession::binaryMessage));
 
