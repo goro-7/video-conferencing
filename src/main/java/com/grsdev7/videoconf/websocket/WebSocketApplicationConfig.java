@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.Ordered;
 import org.springframework.web.reactive.HandlerMapping;
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
 import org.springframework.web.reactive.socket.WebSocketHandler;
@@ -21,11 +20,16 @@ import static org.springframework.core.Ordered.HIGHEST_PRECEDENCE;
 @Configuration
 @RequiredArgsConstructor
 public class WebSocketApplicationConfig {
-    private final WebSocketHandler webSocketHandler;
+    private final WebSocketHandlerImpl sendStreamHandler;
+    private final VideoOutputHandler getStreamHandler;
+    private final UserVideoOutputHandler userVideoOutputHandler;
+
 
     @Bean
     public HandlerMapping handlerMapping() {
-        Map<String, WebSocketHandler> map = Map.of(WebSocketHandlerImpl.PATH, webSocketHandler);
+        Map<String, WebSocketHandler> map = Map.of(userVideoOutputHandler.PATH, userVideoOutputHandler,
+                sendStreamHandler.PATH, sendStreamHandler
+        );
         SimpleUrlHandlerMapping mapping = new SimpleUrlHandlerMapping();
         mapping.setUrlMap(map);
         mapping.setOrder(HIGHEST_PRECEDENCE);
@@ -40,6 +44,8 @@ public class WebSocketApplicationConfig {
 
     @Bean
     public WebSocketService webSocketService() {
-        return new HandshakeWebSocketService(new ReactorNettyRequestUpgradeStrategy());
+        ReactorNettyRequestUpgradeStrategy upgradeStrategy = new ReactorNettyRequestUpgradeStrategy();
+        upgradeStrategy.setMaxFramePayloadLength(Integer.MAX_VALUE);
+        return new HandshakeWebSocketService(upgradeStrategy);
     }
 }

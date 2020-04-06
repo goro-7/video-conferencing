@@ -14,21 +14,26 @@
 <div class="container text-center">
 
     <h3>Janus Room</h3>
-    <button id="connect" onclick="connect()" type="button" class="btn btn-primary mb-4">Connect</button>
-    <button id="disconnect" onclick="disconnectStream()" type="button" class="btn btn-primary mb-4">Disconnect</button>
-
-    <video id="video" type="video/mp4" controls="Volume" class="embed-responsive-item" height="400" >
+    <button id="send" onclick="startStreams()" type="button" class="btn btn-primary mb-4">Send</button>
+    <button id="get" onclick="startIncomingStream()" type="button" class="btn btn-primary mb-4">Get</button>
+    <button id="disconnect" onclick="closeCamera()" type="button" class="btn btn-primary mb-4">Disconnect</button>
+    
+    
+    <br/>
+    <video id="video" duration="+Infinity" type="video/mp4" controls="Volume" class="embed-responsive-item" height="">
         Your browser does not support the video tag.
     </video>
 
-    <video id="video1" type="video/mp4" controls="" class="embed-responsive-item" height="400" >
+    <video id="video1" type="video/mp4" controls="" class="embed-responsive-item" height=""
+           autoplay muted="muted">
         Your browser does not support the video tag.
     </video>
 
 </div>
 
 <script type="text/javascript" src="js/index.js"></script>
-<script type="text/javascript" src="js/stream.js"></script>
+<script type="text/javascript" src="js/streamSend.js"></script>
+<script type="text/javascript" src="js/streamGet.js"></script>
 
 </body>
 

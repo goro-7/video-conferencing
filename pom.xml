@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.grsdev7.videoconf</groupId>
     <artifactId>video-conferencing</artifactId>
-    <version>1.1</version>
+    <version>1.2</version>
     <name>VideoConferencing</name>
     <description>Demo website for video conference</description>
 
