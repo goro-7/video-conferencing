@@ -1,16 +1,7 @@
 /* constants */
 
 const video = document.getElementById('video');
-
-$(document).ready(function () {
-
-});
-
-
-/* window unloaded */
-$(window).on("unload", function (e) {
-
-});
+let streamOn = true
 
 /* functions */
 function startIncomingStream() {
