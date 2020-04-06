@@ -1,6 +1,7 @@
 /* constants */
 /* window loaded */
 $(document).ready(function () {
+    setUpVideo();
 });
 
 

@@ -3,8 +3,24 @@
 const video = document.getElementById('video');
 let streamOn = true
 
+function setUpVideo() {
+    // set up video
+    video.onloadeddata = e => console.info("video - data loaded");
+    video.onplay = e => console.info("video - playing begun");
+    video.onemptied = e => console.info("video - is now empty");
+    video.onwaiting = e => {
+        console.info("video - is now waiting for data ... ");
+    }
+
+    video.onended = event => {
+        console.info("video ended");
+        startIncomingStream();
+    }
+}
+
 /* functions */
 function startIncomingStream() {
+
     console.log("getting stream from server");
     let socket = openGetSocket();
 
@@ -18,7 +34,7 @@ function startIncomingStream() {
 
     socket.onclose = function (closeEvent) {
         if (chunks.length > 0) {
-            let blob = new Blob(chunks, { "type": mimeType });
+            let blob = new Blob(chunks, {"type": mimeType});
             video.src = window.URL.createObjectURL(blob);
             console.info("playing stream from server");
             video.play();
