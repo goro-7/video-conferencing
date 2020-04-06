@@ -20,14 +20,14 @@ import static org.springframework.core.Ordered.HIGHEST_PRECEDENCE;
 @Configuration
 @RequiredArgsConstructor
 public class WebSocketApplicationConfig {
-    private final WebSocketHandlerImpl sendStreamHandler;
-    private final VideoOutputHandler getStreamHandler;
-    private final UserVideoOutputHandler userVideoOutputHandler;
+    private final InStreamHandler sendStreamHandler;
+    private final OutStreamHandler outStreamHandler;
 
 
     @Bean
     public HandlerMapping handlerMapping() {
-        Map<String, WebSocketHandler> map = Map.of(userVideoOutputHandler.PATH, userVideoOutputHandler,
+        Map<String, WebSocketHandler> map = Map.of(
+                outStreamHandler.PATH, outStreamHandler,
                 sendStreamHandler.PATH, sendStreamHandler
         );
         SimpleUrlHandlerMapping mapping = new SimpleUrlHandlerMapping();

@@ -25,21 +25,24 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
-import static com.grsdev7.videoconf.websocket.WebSocketHandlerImpl.FILE_TYPE;
-import static com.grsdev7.videoconf.websocket.WebSocketHandlerImpl.OUTPUT_DIR;
+import static com.grsdev7.videoconf.websocket.InStreamHandler.FILE_TYPE;
+import static com.grsdev7.videoconf.websocket.InStreamHandler.OUTPUT_DIR;
 import static java.nio.file.StandardOpenOption.READ;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class UserVideoOutputHandler implements WebSocketHandler, ApplicationListener<CustomSpringEvent> {
+public class OutStreamHandler implements WebSocketHandler, ApplicationListener<CustomSpringEvent> {
     public static String PATH = "ws/get";
-    private Long lastFileSent = 0L;
+    private AtomicLong lastFileSent = new AtomicLong(1L);
+
 
     @PostConstruct
     public void setup() {
+
     }
 
     @SneakyThrows
@@ -48,7 +51,7 @@ public class UserVideoOutputHandler implements WebSocketHandler, ApplicationList
         log.info("WebSocketSession : {}", webSocketSession.getHandshakeInfo());
 
         // find latest file to be sent
-        Path newPath = Paths.get(OUTPUT_DIR, (++lastFileSent).toString() + FILE_TYPE);
+        Path newPath = Paths.get(OUTPUT_DIR, lastFileSent.toString() + FILE_TYPE);
 
         Optional<Path> newFileOpt = Files.exists(newPath) ? Optional.of(newPath) : Optional.empty();
 
@@ -63,11 +66,11 @@ public class UserVideoOutputHandler implements WebSocketHandler, ApplicationList
                     webSocketSession.bufferFactory(),
                     (int) Files.size(newFile))
                     .map(dataBuffer -> dataBuffer.asByteBuffer())
-                    .log()
                     .map(byteBuffer -> (Function<DataBufferFactory, DataBuffer>) (DataBufferFactory dbf) -> dbf.wrap(byteBuffer))
                     .map(webSocketSession::binaryMessage)
                     .doOnComplete(() -> {
-                        lastFileSent = ++lastFileSent;
+                        lastFileSent.incrementAndGet();
+                        log.info("file sent fully - {}", newFile);
                     });
             return
                     webSocketSession.send(flux)

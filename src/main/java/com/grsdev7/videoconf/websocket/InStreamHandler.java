@@ -14,11 +14,14 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.nio.channels.WritableByteChannel;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -26,21 +29,32 @@ import static java.nio.file.StandardOpenOption.WRITE;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class WebSocketHandlerImpl implements WebSocketHandler {
+public class InStreamHandler implements WebSocketHandler {
     public static final String FILE_TYPE = ".webm";
     public static String PATH = "ws/send";
-    public static final String OUTPUT_DIR = "/Users/gaurav.salvi/Downloads/vc/input/";
-    public static final Path OUTPUT_PATH = Paths.get(OUTPUT_DIR);
-    private Long lastFileCreated = 0L;
+    public static String OUTPUT_DIR = "data/stream";
+    private AtomicLong lastFileCreated = new AtomicLong(0L);
+
 
     @PostConstruct
+    public void createOutputDir() throws IOException {
+        Path outputDir = Paths.get(OUTPUT_DIR);
+        try {
+            Files.createDirectories(outputDir);
+        } catch (FileAlreadyExistsException e) {
+            Files.deleteIfExists(outputDir);
+            Files.createDirectories(outputDir);
+        }
+    }
+
+    @PreDestroy
     @SneakyThrows
     public void deleteOldFiles() {
-        final Path path = Paths.get(OUTPUT_DIR);
-        try (Stream<Path> fileStream = Files.list(path)) {
-            fileStream.forEach(path1 -> {
+        log.info("deleting all stream files");
+        try (Stream<Path> fileStream = Files.list(Paths.get(OUTPUT_DIR))) {
+            fileStream.forEach(file -> {
                 try {
-                    Files.deleteIfExists(path1);
+                    Files.deleteIfExists(file);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -53,20 +67,19 @@ public class WebSocketHandlerImpl implements WebSocketHandler {
     public Mono<Void> handle(WebSocketSession webSocketSession) {
         Flux<WebSocketMessage> messageFlux = webSocketSession.receive();
         Flux<DataBuffer> dataFlux = messageFlux.map(WebSocketMessage::getPayload);
-        Mono<String> responseMono = saveToFile((++lastFileCreated).toString() + FILE_TYPE, dataFlux);
+        Mono<String> responseMono = saveToFile(lastFileCreated.incrementAndGet() , FILE_TYPE, dataFlux);
         return webSocketSession.send(responseMono.map(webSocketSession::textMessage));
     }
 
-    Mono<String> saveToFile(String fileName, Flux<DataBuffer> dataFlux) throws IOException {
-        log.info("Starting file writing {}", fileName);
-        Path path = Paths.get(OUTPUT_DIR, fileName);
+    Mono<String> saveToFile(Long fileNumber, String fileType, Flux<DataBuffer> dataFlux) throws IOException {
+
+        Path path = Paths.get(OUTPUT_DIR, fileNumber.toString() + fileType);
         Path file = Files.createFile(path);
+        log.info("Starting file writing - {}", file);
         WritableByteChannel channel = Files.newByteChannel(file, WRITE);
         Flux<DataBuffer> returnFlux = DataBufferUtils.write(dataFlux, channel)
-                //.log()
-                .doOnComplete(() -> {
-                    lastFileCreated = ++lastFileCreated;
-                });
+                .doOnComplete(() -> log.info("file written - {}", file))
+                ;
         return
                 returnFlux.then(Mono.just("file created : " + file.toFile().getName()));
     }
