@@ -37,7 +37,7 @@ function recordAndSend() {
         if (mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
         }
-    }, 5000);
+    }, 500);
 }
 
 function sendData(data) {
