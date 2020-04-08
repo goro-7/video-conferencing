@@ -59,7 +59,7 @@ public class StreamService {
         int key = lastSavedKey.incrementAndGet();
         cache.put(key, stream);
         sendStreamToClients(stream, userId);
-        log.info("Added stream to with id : {}", key);
+        log.debug("Added stream to with id : {}", key);
     }
 
     private void sendStreamToClients(ByteArrayOutputStream stream, Integer userId) {
@@ -67,7 +67,6 @@ public class StreamService {
                 .stream()
                 .filter(user -> !user.getId().equals(userId))
                 .forEach(user -> {
-                    log.info("trying to send to {}", user.getId());
                     WebSocketSession session = user.getSession();
                     Mono<WebSocketMessage> message =
                             Mono.just(stream)

@@ -2,6 +2,7 @@ package com.grsdev7.videoconf.handler;
 
 
 import com.grsdev7.videoconf.domain.User;
+import com.grsdev7.videoconf.repository.UserRepository;
 import com.grsdev7.videoconf.service.StreamService;
 import com.grsdev7.videoconf.utils.Tuple;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import org.springframework.web.reactive.socket.adapter.ReactorNettyWebSocketSess
 import org.springframework.web.util.UriTemplate;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.SignalType;
 import reactor.netty.http.websocket.WebsocketInbound;
 
 import javax.annotation.PostConstruct;
@@ -50,6 +52,7 @@ public class InStreamHandler implements WebSocketHandler {
     public static String PATH = "/ws/send/{userId}";
     public static String OUTPUT_DIR = "data/stream";
     private final StreamService streamService;
+    private final UserRepository userRepository;
 
     @PreDestroy
     @SneakyThrows
@@ -70,7 +73,9 @@ public class InStreamHandler implements WebSocketHandler {
     public Mono<Void> handle(WebSocketSession session) {
         User user = streamService.saveSession(session);
 
-        Flux<WebSocketMessage> messageFlux = session.receive().map(Function.identity());
+        Flux<WebSocketMessage> messageFlux = session.receive()
+                .doFinally(signalType -> this.removeUserSession(signalType, user.getId()));
+
         Flux<DataBuffer> dataBufferFlux = messageFlux.map(WebSocketMessage::getPayload);
 
         // define  process for copying  stream to cache
@@ -87,6 +92,13 @@ public class InStreamHandler implements WebSocketHandler {
         return
                 Mono.never()
                         ;
+    }
+
+    private void removeUserSession(SignalType signalType, Integer userId) {
+        log.debug("Client sent terminating signal : {}", signalType);
+        if(signalType.equals(SignalType.ON_COMPLETE)){
+            userRepository.deleteById(userId);
+        }
     }
 
 }

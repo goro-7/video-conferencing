@@ -50,10 +50,10 @@ public class UserRepositoryCacheImpl extends CommonRepository implements UserRep
     @Override
     public List<User> findAllUsersOtherThan(Integer userId) {
         return
-        activeUserIdList.stream()
-                .filter(id -> !id.equals(userId))
-                .map(id -> cache.get(id, User.class))
-                .collect(toList());
+                activeUserIdList.stream()
+                        .filter(id -> !id.equals(userId))
+                        .map(id -> cache.get(id, User.class))
+                        .collect(toList());
     }
 
     @Override
@@ -64,6 +64,7 @@ public class UserRepositoryCacheImpl extends CommonRepository implements UserRep
 
     @Override
     public boolean deleteById(Integer id) {
+        log.trace("Removing user : {}", id);
         return cache.evictIfPresent(id);
     }
 
