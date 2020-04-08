@@ -1,7 +1,9 @@
 package com.grsdev7.videoconf.handler;
 
 
-import com.grsdev7.videoconf.repository.StreamRepository;
+import com.grsdev7.videoconf.domain.User;
+import com.grsdev7.videoconf.service.StreamService;
+import com.grsdev7.videoconf.utils.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -11,44 +13,43 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
+import org.springframework.web.reactive.socket.adapter.ReactorNettyWebSocketSession;
+import org.springframework.web.util.UriTemplate;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.netty.http.websocket.WebsocketInbound;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
+import static java.nio.file.Files.write;
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
+import static java.util.Optional.ofNullable;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class InStreamHandler implements WebSocketHandler {
-    public static final String FILE_TYPE = ".webm";
-    public static String PATH = "ws/send";
+    public static String PATH = "/ws/send/{userId}";
     public static String OUTPUT_DIR = "data/stream";
-    private AtomicLong lastFileCreated = new AtomicLong(0L);
-    private final StreamRepository streamRepository;
-
-
-    @PostConstruct
-    public void createOutputDir() throws IOException {
-        Path outputDir = Paths.get(OUTPUT_DIR);
-        try {
-            Files.createDirectories(outputDir);
-        } catch (FileAlreadyExistsException e) {
-            Files.deleteIfExists(outputDir);
-            Files.createDirectories(outputDir);
-        }
-    }
+    private final StreamService streamService;
 
     @PreDestroy
     @SneakyThrows
@@ -65,44 +66,43 @@ public class InStreamHandler implements WebSocketHandler {
         }
     }
 
-    @SneakyThrows
     @Override
-    public Mono<Void> handle(WebSocketSession webSocketSession) {
-        Flux<WebSocketMessage> messageFlux = webSocketSession.receive();
-        Flux<DataBuffer> dataFlux = messageFlux.map(WebSocketMessage::getPayload);
+    public Mono<Void> handle(WebSocketSession session) {
+        User user = streamService.saveSession(session);
 
+        Flux<WebSocketMessage> messageFlux = session.receive().map(Function.identity());
+        Flux<DataBuffer> dataBufferFlux = messageFlux.map(WebSocketMessage::getPayload);
 
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        return
-                DataBufferUtils.write(dataFlux, os)
-                        .doOnComplete(() -> {
-                                    log.info("data written to os - {}", os.size());
-                                    streamRepository.saveStream(os);
-                                }
-                        )
-                        .then(Mono.empty())
-                ;
+        // define  process for copying  stream to cache
+        Consumer<DataBuffer> streamWriter = db -> {
+            StreamWriter.transfer(db)
+                    .getX()
+                    .ifPresent(value -> {
+                        streamService.saveStream((ByteArrayOutputStream) value, user.getId());
+                    });
+        };
 
-
-        // return mono.then();
-        /* this works
-        Mono<String> responseMono = saveToFile(lastFileCreated.incrementAndGet() , FILE_TYPE, dataFlux);
-        return webSocketSession.send(responseMono.map(webSocketSession::textMessage));
-         */
-    }
-
-    Mono<String> saveToFile(Long fileNumber, String fileType, Flux<DataBuffer> dataFlux) throws IOException {
-
-        Path path = Paths.get(OUTPUT_DIR, fileNumber.toString() + fileType);
-        Path file = Files.createFile(path);
-        log.info("Starting file writing - {}", file);
-        WritableByteChannel channel = Files.newByteChannel(file, WRITE);
-        Flux<DataBuffer> returnFlux = DataBufferUtils.write(dataFlux, channel)
-                .doOnComplete(() -> log.info("file written - {}", file));
-
+        dataBufferFlux.subscribe(streamWriter);
 
         return
-                returnFlux.then(Mono.just("file created : " + file.toFile().getName()));
+                Mono.never()
+                        ;
     }
 
+}
+
+interface StreamWriter {
+    static Tuple<Optional<OutputStream>, Optional<Exception>> transfer(DataBuffer db) {
+        try (InputStream is = db.asInputStream()) {
+            OutputStream os = new ByteArrayOutputStream();
+            is.transferTo(os);
+            return buildTuple(os, null);
+        } catch (IOException ex) {
+            return buildTuple(null, ex);
+        }
+    }
+
+    private static Tuple<Optional<OutputStream>, Optional<Exception>> buildTuple(OutputStream os, Exception ex) {
+        return new Tuple<>(ofNullable(os), ofNullable(ex));
+    }
 }

@@ -1,27 +1,29 @@
 package com.grsdev7.videoconf.repository;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.CacheManager;
-import org.springframework.stereotype.Component;
+import org.springframework.cache.caffeine.CaffeineCache;
+import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
-@Component
-@Slf4j
-public class IpAddressRepository extends CommonCacheRepository {
-    public final static String CACHE_NAME = "ipAddressToUserId";
+@Service
+public class IpAddressRepository extends CommonRepository {
+    public final static String IP_ADDRESS_TO_USER_ID = "ipAddressToUserId";
+    private final CaffeineCache cache;
 
-    @Autowired
-    public IpAddressRepository(CacheManager cacheManager) {
-        super(CACHE_NAME, cacheManager);
+
+    public IpAddressRepository(@Qualifier("ipCacheManager") CacheManager cacheManager,
+                               @Qualifier("keyCountCacheManager") CacheManager keyCacheManager) {
+        super(keyCacheManager, IP_ADDRESS_TO_USER_ID);
+        this.cache = (CaffeineCache) cacheManager.getCache(IP_ADDRESS_TO_USER_ID);
     }
 
-    public Optional<String> findUserIdByIp(String ipAddress) {
-        return Optional.ofNullable(getCache().get(ipAddress, String.class));
+    public Optional<Integer> findUserIdByIp(String ipAddress) {
+        return Optional.ofNullable(cache.get(ipAddress, Integer.class));
     }
 
-    public void add(String ipAddress, String userId) {
-        getCache().put(ipAddress, userId);
+    public void add(String ipAddress, Integer userId) {
+        cache.put(ipAddress, userId);
     }
 }

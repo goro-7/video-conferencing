@@ -32,21 +32,26 @@ public class RootFilter implements WebFilter {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-        ServerHttpRequest request = exchange.getRequest();
-        String userId = getIpAddress(request)
-                .map(ip -> getUserIdFromIpOrCreate(ip))
-                .orElseThrow(() -> new RuntimeException("Unable to get ip address of client"));
-        // add user id to request
-        request.mutate().headers(httpHeaders -> {
-            httpHeaders.set(USER_ID, userId);
-        });
-        ServerHttpResponse response = exchange.getResponse();
-        response.getHeaders().set(USER_ID, userId);
-        ServerWebExchange webExchange = exchange.mutate()
-                .request(request)
-                .response(response)
-                .build();
-        return chain.filter(webExchange);
+
+        // todo remove when javascript user id approach works
+        /*
+         ServerHttpRequest request = exchange.getRequest();
+        if (request.getPath().pathWithinApplication().value().trim().equalsIgnoreCase("/")) {
+            String userId = getIpAddress(request)
+                    .map(ip -> getUserIdFromIpOrCreate(ip).toString())
+                    .orElseThrow(() -> new RuntimeException("Unable to get ip address of client"));
+            // add user id to request
+            request.mutate().headers(httpHeaders -> {
+                httpHeaders.set(USER_ID, userId);
+            });
+            ServerHttpResponse response = exchange.getResponse();
+            response.getHeaders().set(USER_ID, userId);
+            exchange = exchange.mutate()
+                    .request(request)
+                    .response(response)
+                    .build();
+        }*/
+        return chain.filter(exchange);
     }
 
 
@@ -66,8 +71,8 @@ public class RootFilter implements WebFilter {
                 .map(InetAddress::getHostAddress);
     }
 
-    private String getUserIdFromIpOrCreate(@NonNull String ipAddress) {
-        String userId =
+    private Integer getUserIdFromIpOrCreate(@NonNull String ipAddress) {
+        Integer userId =
                 ipAddressRepository.findUserIdByIp(ipAddress)
                         .orElseGet(() -> createNewUser(ipAddress).getId());
         return userId;

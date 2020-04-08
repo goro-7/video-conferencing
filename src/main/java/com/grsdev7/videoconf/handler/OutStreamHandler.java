@@ -1,7 +1,7 @@
 package com.grsdev7.videoconf.handler;
 
 
-import com.grsdev7.videoconf.repository.StreamRepository;
+import com.grsdev7.videoconf.service.StreamService;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -36,8 +36,7 @@ import static java.nio.file.StandardOpenOption.READ;
 public class OutStreamHandler implements WebSocketHandler {
     public static String PATH = "ws/get";
     private AtomicLong lastFileSent = new AtomicLong(1L);
-    private final StreamRepository repository;
-
+    private final StreamService streamService;
 
     @PostConstruct
     public void setup() {
@@ -48,17 +47,23 @@ public class OutStreamHandler implements WebSocketHandler {
     @Override
     public Mono<Void> handle(WebSocketSession webSocketSession) {
         log.info("WebSocketSession : {}", webSocketSession.getHandshakeInfo());
+        //return Mono.never();
 
-        Optional<ByteArrayOutputStream> streamChunk = repository.getNextStreamChunk();
+        // this also works
+        Mono<ByteArrayOutputStream> streamMono = streamService.getNextStreamChunk();
 
-        if (streamChunk.isEmpty()) {
-            log.info("No new stream");
-            return webSocketSession.send(Mono.empty());
-        } else {
-            ByteArrayOutputStream stream = streamChunk.get();
+
+        Mono<WebSocketMessage> response = streamMono.map(value -> webSocketSession.binaryMessage(dbf -> dbf.wrap(value.toByteArray())));
+        return
+                webSocketSession.send(response)
+                        .then();
+
+
+/*            ByteArrayOutputStream stream = streamChunk.get();
             Flux<DataBuffer> bufferFlux = DataBufferUtils.readInputStream(() -> new ByteArrayInputStream(stream.toByteArray()),
                     webSocketSession.bufferFactory(),
                     stream.size()
+
             );
 
             Flux<WebSocketMessage> stream_sent_fully = bufferFlux.map(dataBuffer -> dataBuffer.asByteBuffer())
@@ -71,7 +76,7 @@ public class OutStreamHandler implements WebSocketHandler {
             return
                     webSocketSession.send(stream_sent_fully)
                             .doFinally(signal -> webSocketSession.close());
-        }
+    }*/
         /* this works
         // find latest file to be sent
         Path newPath = Paths.get(OUTPUT_DIR, lastFileSent.toString() + FILE_TYPE);

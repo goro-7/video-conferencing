@@ -8,26 +8,27 @@
     <script type="text/javascript" src="webjars/jquery-ui/1.12.1/jquery-ui.js"></script>
     <link rel="stylesheet" type="text/css" href="webjars/jquery-ui/1.12.1/jquery-ui.css"/>
     <link rel="stylesheet" type="text/css" href="webjars/bootstrap/4.4.1/css/bootstrap.min.css"/>
-    <title>localhost</title>
+    <title>Flux</title>
 </head>
 <body>
 <div class="container text-center">
 
-    <h3>Janus Room</h3>
-    <button id="send" onclick="startStreams()" type="button" class="btn btn-primary mb-4">Send</button>
-    <button id="get" onclick="startIncomingStream()" type="button" class="btn btn-primary mb-4">Get</button>
-    <button id="disconnect" onclick="closeCamera()" type="button" class="btn btn-primary mb-4">Disconnect</button>
+    <h3>Flux Room</h3>
+    <button id="send" onclick="startOutgoingStream()" type="button" class="btn btn-primary mb-4">Begin</button>
+<!--    <button id="get" onclick="startIncomingStream()" type="button" class="btn btn-primary mb-4">Get</button>-->
+    <button id="disconnect" onclick="stopOutgoingStream()" type="button" class="btn btn-primary mb-4">Stop</button>
     
     
     <br/>
-    <video id="video" duration="+Infinity" type="video/mp4" controls="Volume" class="embed-responsive-item" height="">
+    <video id="video" duration="+Infinity" type="video/mp4" controls="Volume" class="embed-responsive-item"
+           height="500" style="width:80%">
         Your browser does not support the video tag.
     </video>
 
-    <video id="video1" type="video/mp4" controls="" class="embed-responsive-item" height=""
+<!--    <video id="video1" type="video/mp4" controls="" class="embed-responsive-item" height=""
            autoplay muted="muted">
         Your browser does not support the video tag.
-    </video>
+    </video>-->
 
 </div>
 

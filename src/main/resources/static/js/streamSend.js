@@ -8,55 +8,106 @@ const options = {
     videoBitsPerSecond: 2500000,
     mimeType: 'video/webm'
 };
-
-
-const video1 = document.getElementById('video1');
-
-let cameraStream;
-let record = true;
+let recording = false;
 let webSocket;
 
+function generateUserId() {
+    let userId = Math.floor(Math.random() * Math.floor(100));
+    console.info(`using userId ${userId}`);
+    self.window.name = userId.toString();
+}
 
+function getUserId() {
+    return self.window.name;
+}
+
+/* document events */
+$(document).ready(() => generateUserId());
+
+
+$(window).on("unload", () => {
+    recording = false;
+});
+
+let camera;
 
 /* functions */
 async function startOutgoingStream() {
     console.log("starting stream to server");
-    // connect to web cam & microphone
-    cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
-    recordAndSend();
+    webSocket = openSendSocket();
+    try {
+        camera = await navigator.mediaDevices.getUserMedia(constraints);
+        recordAndSend(camera);
+        startIncomingStream(webSocket);
+    } catch (err) {
+        console.error("failed to get camera", err);
+    }
 }
 
 
-function recordAndSend() {
-    let mediaRecorder = new MediaRecorder(cameraStream, options);
+function openSendSocket() {
+    try {
+        const userId = getUserId();
+        const url = ((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host + "/ws/send/" + getUserId();
+        console.info(`connecting ${url}`);
+        let webSocket = new WebSocket(url);
+        console.debug("webSocket open initiated", webSocket);
+        webSocket.onerror = errorEvent => {
+            console.error("socket error", errorEvent);
+            if (isRecording()) {
+                openSendSocket();
+            }
+        };
+
+        webSocket.onclose = closeEvent => {
+            console.debug("socket closed", closeEvent);
+            if (isRecording()) {
+                openSendSocket();
+            }
+        };
+
+        return webSocket;
+    } catch (error) {
+        console.error('WebSocket Error ', error);
+    }
+}
+
+function recordAndSend(camera) {
+    let mediaRecorder = new MediaRecorder(camera, options);
     mediaRecorder.start();
+    recording = true;
     const buffer = [];
     mediaRecorder.ondataavailable = event => buffer.push(event.data);
-    mediaRecorder.onstop = event => sendData(new Blob(buffer));
+    mediaRecorder.onstop = event => {
+        let blob = new Blob(buffer);
+        sendData(blob);
+        blob = null;
+        buffer.length = 0;
+    };
     setTimeout(() => {
-        if (mediaRecorder.state === 'recording') {
-            mediaRecorder.stop();
-        }
-    }, 500);
+            if (mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+            recordAndSend(camera);
+        },
+        5000);
 }
 
 function sendData(data) {
     if (data.size > 0) {
-        let socket = openSendSocket();
-        socket.onopen = function (openEvent) {
+        if (webSocket.readyState === WebSocket.OPEN) {
             console.info("sending data of size ", data.size);
-            socket.send(data);
-            socket.close();
-            if(record){
-                recordAndSend();
+            try {
+                webSocket.send(data);
+            } catch (error) {
+                console.warn("Failed to send date", error);
             }
-        }
-    }else{
-        if(record){
-            recordAndSend();
-        }
-    }
 
+        } else {
+            console.warn("Socket not open yet ", webSocket);
+        }
+        data = null;
+    }
 }
 
 /*
@@ -69,27 +120,18 @@ function notSupported() {
     }
 }*/
 
-function closeCamera() {
-    record = false;
+function stopOutgoingStream() {
     console.info("closing camera");
-    if (cameraStream) {
-        cameraStream.getTracks().forEach(element => {
+    if (camera) {
+        camera.getTracks().forEach(element => {
             element.stop();
         });
     }
+    if (webSocket) {
+        webSocket.close(1000, "User clicked disconnect");
+    }
 }
 
-function openSendSocket() {
-    try {
-        webSocket = new WebSocket(((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host + "/ws/send");
-        console.debug("webSocket open initiated", webSocket);
-        webSocket.onerror = function (errorEvent) {
-            console.error("socket error", errorEvent);
-            //mediaRecorder.pause();
-        };
-
-        return webSocket;
-    } catch (error) {
-        console.error('WebSocket Error ', error);
-    }
+function isRecording() {
+    return recording;
 }
