@@ -55,7 +55,7 @@ public class RootFilter implements WebFilter {
     }
 
 
-    private User createNewUser(String ipAddress) {
+    /*private User createNewUser(String ipAddress) {
         User user = User.builder()
                 .ipAddress(ipAddress)
                 .build();
@@ -63,7 +63,7 @@ public class RootFilter implements WebFilter {
         ipAddressRepository.add(ipAddress, saved.getId());
         log.info("New user created : {} for Ip : {}", saved, ipAddress);
         return saved;
-    }
+    }*/
 
     private Optional<String> getIpAddress(ServerHttpRequest request) {
         return ofNullable(request.getRemoteAddress())
@@ -71,10 +71,10 @@ public class RootFilter implements WebFilter {
                 .map(InetAddress::getHostAddress);
     }
 
-    private Integer getUserIdFromIpOrCreate(@NonNull String ipAddress) {
-        Integer userId =
+/*    private String getUserIdFromIpOrCreate(@NonNull String ipAddress) {
+        String userId =
                 ipAddressRepository.findUserIdByIp(ipAddress)
                         .orElseGet(() -> createNewUser(ipAddress).getId());
         return userId;
-    }
+    }*/
 }

@@ -8,17 +8,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
-import org.springframework.cache.support.SimpleValueWrapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.reactive.socket.adapter.ReactorNettyWebSocketSession;
 import org.springframework.web.util.UriTemplate;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.PostConstruct;
@@ -26,11 +22,9 @@ import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static java.util.Optional.of;
-import static java.util.Optional.ofNullable;
+import static com.grsdev7.videoconf.utils.WebSocketUtils.toSocketMessageMono;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -55,32 +49,32 @@ public class StreamService {
         this.userCache = (CaffeineCache) cacheManager.getCache(UserRepositoryCacheImpl.USERS);
     }
 
-    public void saveStream(ByteArrayOutputStream stream, Integer userId) {
+/*    public void saveStream(ByteArrayOutputStream stream, Integer userId) {
         int key = lastSavedKey.incrementAndGet();
         cache.put(key, stream);
         sendStreamToClients(stream, userId);
         log.debug("Added stream to with id : {}", key);
-    }
+    }*/
 
-    private void sendStreamToClients(ByteArrayOutputStream stream, Integer userId) {
-        userRepository.findAllUsersOtherThan(null)
-                .stream()
+/*    private void sendStreamToClients(ByteArrayOutputStream stream, Integer userId) {
+        userRepository.findAllUsers()
                 .filter(user -> !user.getId().equals(userId))
-                .forEach(user -> {
-                    WebSocketSession session = user.getSession();
-                    Mono<WebSocketMessage> message =
-                            Mono.just(stream)
-                                    //.log()
-                                    .map(value -> session.binaryMessage(dbf -> dbf.wrap(value.toByteArray())));
+                .map(user -> user.getSession())
+                .parallel()
+                .map(session -> session.send(toSocketMessageMono(session, stream)))
+                .doOnError(error -> log.warn("Failed to send video stream due to {}", error.getMessage()));
 
-                    session.send(message)
-                            .doOnError(ex -> {
-                                log.warn("Error occurred on send data due to {}", ex.getMessage());
-                                userRepository.removeUserFromActiveList(user.getId());
-                            })
-                            .subscribe();
-                });
-    }
+*//* this works
+        WebSocketSession session = user.getSession();
+        Mono<WebSocketMessage> message = Mono.just(stream)
+                .map(value -> session.binaryMessage(dbf -> dbf.wrap(value.toByteArray())));
+        session.send(message)
+                .doOnError(ex -> {
+                    log.warn("Error occurred on send data due to {}", ex.getMessage());
+                    userRepository.removeUserFromActiveList(user.getId());
+                })
+                .subscribe();*//*
+    }*/
 
     public Mono<ByteArrayOutputStream> getNextStreamChunk() {
         int newKey = lastSavedKey.get();
@@ -97,34 +91,15 @@ public class StreamService {
                 .map(value -> ((ByteArrayOutputStream) value.get()));
     }
 
-    public User saveSession(WebSocketSession webSocketSession) {
-        ReactorNettyWebSocketSession session = (ReactorNettyWebSocketSession) webSocketSession;
-        Integer userId = getUserId(session);
-        User user = getSession(userId).orElseGet(() -> createNewUser(userId, session));
-        return user;
-    }
 
-    private User createNewUser(Integer userId, WebSocketSession session) {
-        User user = User.builder()
-                .id(userId)
-                .session(session)
-                .build();
-        return userRepository.save(user);
-    }
 
-    private Optional<User> getSession(Integer userId) {
-        return userRepository.findById(userId);
-    }
 
-    private Integer getUserId(WebSocketSession session) {
-        ReactorNettyWebSocketSession nettySession = (ReactorNettyWebSocketSession) session;
-        URI uri = nettySession.getHandshakeInfo().getUri();
-        UriTemplate template = new UriTemplate("/ws/send/{userId}");
-        Map<String, String> parameters = template.match(uri.getPath());
-        return Integer.valueOf(parameters.get("userId"));
-    }
-
-    public void removeUserFromActiveList(Integer key) {
+/*
+    public void removeUserFromActiveList(String key) {
         userRepository.removeUserFromActiveList(key);
     }
+*/
+
+
 }
+

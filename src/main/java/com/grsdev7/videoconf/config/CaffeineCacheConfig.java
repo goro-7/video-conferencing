@@ -29,7 +29,7 @@ public class CaffeineCacheConfig {
     public final static String KEY_COUNT = "keyCount";
     @Autowired
     @Lazy
-    private StreamService streamService;
+    private UserRepository userRepository;
 
     @Bean
     public CaffeineCacheManager ipCacheManager() {
@@ -55,7 +55,7 @@ public class CaffeineCacheConfig {
                 .recordStats()
                 .removalListener((key, value, cause) -> {
                     log.info("Removed entry from {}, key {} due to {}", USERS, key, cause);
-                    streamService.removeUserFromActiveList((Integer) key);
+                    userRepository.removeUserFromActiveList(String.valueOf(key));
                 });
 
         CaffeineCacheManager cacheManager = new CaffeineCacheManager(USERS);
@@ -67,8 +67,8 @@ public class CaffeineCacheConfig {
     public CaffeineCacheManager streamCacheManager() {
         Caffeine<Object, Object> caffeine = Caffeine.newBuilder()
                 .initialCapacity(20)
-                .maximumSize(100)
-                //.expireAfterAccess(Duration.ofSeconds(20))
+                .maximumSize(30)
+                .expireAfterWrite(Duration.ofSeconds(10))
                 .recordStats()
                 .removalListener((key, value, cause) -> log.info("Removed entry from {}, key {} due to {}",
                         STREAM, key, cause));

@@ -32,7 +32,7 @@ public class RootFilterTest {
                 .isOk();
 
         // when
-        Optional<User> user = userRepository.findById(1);
+        Optional<User> user = userRepository.findById("1");
 
         // then
         assertThat(user).isPresent();

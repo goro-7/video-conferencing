@@ -3,13 +3,15 @@ package com.grsdev7.videoconf.handler;
 
 import com.grsdev7.videoconf.domain.User;
 import com.grsdev7.videoconf.repository.UserRepository;
+import com.grsdev7.videoconf.service.MediaProcessor;
 import com.grsdev7.videoconf.service.StreamService;
 import com.grsdev7.videoconf.utils.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.reactivestreams.Publisher;
+import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
@@ -19,31 +21,25 @@ import org.springframework.web.util.UriTemplate;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
-import reactor.netty.http.websocket.WebsocketInbound;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
-import java.nio.channels.WritableByteChannel;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.nio.file.Files.write;
-import static java.nio.file.StandardOpenOption.CREATE_NEW;
-import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Optional.ofNullable;
+import static java.util.stream.Collectors.toList;
 
 @Slf4j
 @Component
@@ -53,6 +49,7 @@ public class InStreamHandler implements WebSocketHandler {
     public static String OUTPUT_DIR = "data/stream";
     private final StreamService streamService;
     private final UserRepository userRepository;
+    private final ApplicationContext applicationContext;
 
     @PreDestroy
     @SneakyThrows
@@ -71,13 +68,18 @@ public class InStreamHandler implements WebSocketHandler {
 
     @Override
     public Mono<Void> handle(WebSocketSession session) {
-        User user = streamService.saveSession(session);
+        User user = saveUserSessionIfNew(session);
 
         Flux<WebSocketMessage> messageFlux = session.receive()
                 .doFinally(signalType -> this.removeUserSession(signalType, user.getId()));
 
-        Flux<DataBuffer> dataBufferFlux = messageFlux.map(WebSocketMessage::getPayload);
+        Flux<DataBuffer> clientFlux = messageFlux.map(WebSocketMessage::getPayload);
 
+        clientFlux.log().subscribe(user.getProcessor());
+
+        attachToOtherClientStream(user);
+
+/* This we need to try
         // define  process for copying  stream to cache
         Consumer<DataBuffer> streamWriter = db -> {
             StreamWriter.transfer(db)
@@ -87,18 +89,77 @@ public class InStreamHandler implements WebSocketHandler {
                     });
         };
 
-        dataBufferFlux.subscribe(streamWriter);
+        MediaProcessor<DataBuffer> mediaProcessor = MediaProcessor.newInstance();
+        clientFlux.subscribe(mediaProcessor);*/
+
+
+        //clientFlux.subscribe(streamWriter); this also works
 
         return
                 Mono.never()
-                        ;
+                ;
     }
 
-    private void removeUserSession(SignalType signalType, Integer userId) {
+    private void attachToOtherClientStream(User newUser) {
+        List<User> otherUsers = getOtherUsers(newUser.getId());
+        otherUsers
+                .forEach(existingUsers -> {
+                    // attach existingUsers to processor of new newUser
+                    newUser.getProcessor().attachDownStream(existingUsers.getSession());
+                    // attach new user to processor of  existingUser
+                    existingUsers.getProcessor().attachDownStream(newUser.getSession());
+                });
+    }
+
+    private List<User> getOtherUsers(String userId) {
+        return userRepository.findAllUsers()
+                .stream()
+                .filter(cachedUser -> !cachedUser.getId().equals(userId))
+                .collect(toList());
+    }
+
+    private Publisher<WebSocketMessage> toWebSocketMessage(WebSocketSession session, Flux<DataBuffer> upstreamFlux) {
+        return upstreamFlux.map(data -> session.binaryMessage(factory -> data));
+    }
+
+    private void removeUserSession(SignalType signalType, String userId) {
         log.debug("Client sent terminating signal : {}", signalType);
-        if(signalType.equals(SignalType.ON_COMPLETE)){
+        if (signalType.equals(SignalType.ON_COMPLETE)) {
             userRepository.deleteById(userId);
+            getOtherUsers(userId).forEach(user -> {
+                user.getProcessor().removeDownStream(userId);
+            });
         }
+    }
+
+    public User saveUserSessionIfNew(WebSocketSession webSocketSession) {
+        ReactorNettyWebSocketSession session = (ReactorNettyWebSocketSession) webSocketSession;
+        String userId = getUserId(session);
+        User user = getUserSession(userId).orElseGet(() -> createNewUserWithSession(userId, session));
+        return user;
+    }
+
+    private User createNewUserWithSession(String userId, WebSocketSession session) {
+        MediaProcessor processor = applicationContext.getBean(MediaProcessor.class);
+        User user = User.builder()
+                .id(userId)
+                .session(session)
+                .processor(processor)
+                .build();
+        processor.setUser(user);
+        return userRepository.save(user);
+    }
+
+    private Optional<User> getUserSession(String userId) {
+        return userRepository.findById(userId);
+    }
+
+    private String getUserId(WebSocketSession session) {
+        ReactorNettyWebSocketSession nettySession = (ReactorNettyWebSocketSession) session;
+        URI uri = nettySession.getHandshakeInfo().getUri();
+        UriTemplate template = new UriTemplate("/ws/send/{userId}");
+        Map<String, String> parameters = template.match(uri.getPath());
+        return parameters.get("userId");
     }
 
 }

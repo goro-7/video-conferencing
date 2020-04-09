@@ -2,10 +2,13 @@ package com.grsdev7.videoconf.config;
 
 import com.grsdev7.videoconf.handler.InStreamHandler;
 import com.grsdev7.videoconf.handler.OutStreamHandler;
+import com.grsdev7.videoconf.service.MediaProcessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
 import org.springframework.web.reactive.HandlerMapping;
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
 import org.springframework.web.reactive.socket.WebSocketHandler;
@@ -49,5 +52,11 @@ public class WebSocketApplicationConfig {
         ReactorNettyRequestUpgradeStrategy upgradeStrategy = new ReactorNettyRequestUpgradeStrategy();
         upgradeStrategy.setMaxFramePayloadLength(Integer.MAX_VALUE);
         return new HandshakeWebSocketService(upgradeStrategy);
+    }
+
+    @Bean
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+    public MediaProcessor mediaProcessor() {
+        return MediaProcessor.newInstance();
     }
 }

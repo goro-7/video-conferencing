@@ -19,11 +19,11 @@ public class IpAddressRepository extends CommonRepository {
         this.cache = (CaffeineCache) cacheManager.getCache(IP_ADDRESS_TO_USER_ID);
     }
 
-    public Optional<Integer> findUserIdByIp(String ipAddress) {
-        return Optional.ofNullable(cache.get(ipAddress, Integer.class));
+    public Optional<String> findUserIdByIp(String ipAddress) {
+        return Optional.ofNullable(cache.get(ipAddress, String.class));
     }
 
-    public void add(String ipAddress, Integer userId) {
+    public void add(String ipAddress, String userId) {
         cache.put(ipAddress, userId);
     }
 }

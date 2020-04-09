@@ -5,8 +5,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -20,7 +20,7 @@ import static java.util.stream.Collectors.toList;
 public class UserRepositoryCacheImpl extends CommonRepository implements UserRepository {
     public static final String USERS = "users";
     private final CaffeineCache cache;
-    private final Collection<Integer> activeUserIdList = new ConcurrentLinkedQueue<>();
+    private final Collection<String> activeUserIdList = new ConcurrentLinkedQueue<>();
 
     public UserRepositoryCacheImpl(@Qualifier("userCacheManager") CacheManager cacheManager,
                                    @Qualifier("keyCountCacheManager") CacheManager keyCacheManager) {
@@ -29,7 +29,7 @@ public class UserRepositoryCacheImpl extends CommonRepository implements UserRep
     }
 
     @Override
-    public Optional<User> findById(Integer id) {
+    public Optional<User> findById(String id) {
         return ofNullable(cache.get(id, User.class));
     }
 
@@ -48,23 +48,23 @@ public class UserRepositoryCacheImpl extends CommonRepository implements UserRep
     }
 
     @Override
-    public List<User> findAllUsersOtherThan(Integer userId) {
+    public List<User> findAllUsers() {
         return
                 activeUserIdList.stream()
-                        .filter(id -> !id.equals(userId))
                         .map(id -> cache.get(id, User.class))
                         .collect(toList());
     }
 
     @Override
-    public void removeUserFromActiveList(Integer userId) {
+    public void removeUserFromActiveList(String userId) {
         activeUserIdList.remove(userId);
     }
 
 
     @Override
-    public boolean deleteById(Integer id) {
+    public boolean deleteById(String id) {
         log.trace("Removing user : {}", id);
+        activeUserIdList.removeIf(active -> active.equals(id));
         return cache.evictIfPresent(id);
     }
 

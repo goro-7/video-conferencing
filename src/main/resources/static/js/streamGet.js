@@ -34,14 +34,14 @@ function setUpVideo(buffer) {
 
 async function loadAndPlay(video, buffer) {
     if (buffer.length > 0) {
-        let slice = buffer.splice(0, 1);
+        let slice = buffer.splice(0,1);
         console.info("playing stream from server slice ", slice);
         let blob = new Blob(slice, {"type": mimeType});
         video.src = window.URL.createObjectURL(blob);
         video.play();
     } else {
         console.info("buffer was empty, waiting ...");
-        setTimeout(() => loadAndPlay(video, buffer), 5000);
+        setTimeout(() => loadAndPlay(video, buffer), 10000);
     }
 }
 
