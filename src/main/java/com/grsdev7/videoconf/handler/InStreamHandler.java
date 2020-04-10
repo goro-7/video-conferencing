@@ -31,6 +31,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -40,31 +41,17 @@ import java.util.stream.Stream;
 import static java.nio.file.Files.write;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toList;
+import static reactor.core.publisher.SignalType.CANCEL;
+import static reactor.core.publisher.SignalType.ON_COMPLETE;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class InStreamHandler implements WebSocketHandler {
     public static String PATH = "/ws/send/{userId}";
-    public static String OUTPUT_DIR = "data/stream";
     private final StreamService streamService;
     private final UserRepository userRepository;
     private final ApplicationContext applicationContext;
-
-    @PreDestroy
-    @SneakyThrows
-    public void deleteOldFiles() {
-        log.info("deleting all stream files");
-        try (Stream<Path> fileStream = Files.list(Paths.get(OUTPUT_DIR))) {
-            fileStream.forEach(file -> {
-                try {
-                    Files.deleteIfExists(file);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-        }
-    }
 
     @Override
     public Mono<Void> handle(WebSocketSession session) {
@@ -75,7 +62,7 @@ public class InStreamHandler implements WebSocketHandler {
 
         Flux<DataBuffer> clientFlux = messageFlux.map(WebSocketMessage::getPayload);
 
-        clientFlux.log().subscribe(user.getProcessor());
+        clientFlux.subscribe(user.getProcessor());
 
         attachToOtherClientStream(user);
 
@@ -122,9 +109,11 @@ public class InStreamHandler implements WebSocketHandler {
         return upstreamFlux.map(data -> session.binaryMessage(factory -> data));
     }
 
+    private EnumSet<SignalType> terminalSignals = EnumSet.of(ON_COMPLETE, CANCEL);
+
     private void removeUserSession(SignalType signalType, String userId) {
         log.debug("Client sent terminating signal : {}", signalType);
-        if (signalType.equals(SignalType.ON_COMPLETE)) {
+        if (terminalSignals.contains(signalType)) {
             userRepository.deleteById(userId);
             getOtherUsers(userId).forEach(user -> {
                 user.getProcessor().removeDownStream(userId);

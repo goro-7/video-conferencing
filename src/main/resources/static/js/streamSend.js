@@ -1,11 +1,12 @@
 /* constants */
+const loopRate = 6000;
 const constraints = {
     video: true,
     audio: true
 };
 const options = {
-    audioBitsPerSecond: 128000,
-    videoBitsPerSecond: 2500000,
+   // audioBitsPerSecond: 128000,
+   // videoBitsPerSecond: 2500000,
     mimeType: 'video/webm'
 };
 let recording = false;
@@ -46,6 +47,7 @@ async function startOutgoingStream() {
     try {
         camera = await navigator.mediaDevices.getUserMedia(constraints);
         recordAndSend(camera);
+        //startIncomingStream(webSocket);
         startIncomingStream(webSocket);
     } catch (err) {
         console.error("failed to get camera", err);
@@ -102,7 +104,7 @@ function recordAndSend(camera) {
             }
             recordAndSend(camera);
         },
-        10000);
+        loopRate);
 }
 
 function sendData(data) {

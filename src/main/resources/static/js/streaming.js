@@ -7,14 +7,14 @@ function startIncomingStream(socket) {
     console.log("getting stream from server");
     const buffer = [];
     setUpVideo(buffer);
-    if (socket === undefined){
+    if (socket === undefined) {
         socket = openGetSocket();
     }
     socket.onmessage = message => {
         console.info("got message from get-socket ", message);
         //let blob = new Blob(message.data.a, {"type": mimeType});
         buffer.push(message.data);
-       // blob = null;
+        // blob = null;
     };
 }
 
@@ -33,15 +33,23 @@ function setUpVideo(buffer) {
 }
 
 async function loadAndPlay(video, buffer) {
+
     if (buffer.length > 0) {
-        let slice = buffer.splice(0,1);
+        let slice = buffer.splice(0, 1);
         console.info("playing stream from server slice ", slice);
         let blob = new Blob(slice, {"type": mimeType});
-        video.src = window.URL.createObjectURL(blob);
-        video.play();
+        try {
+            let currentTime = video.currentTime;
+            video.src = window.URL.createObjectURL(blob);
+            video.currentTime = currentTime;
+            video.play();
+            // URL.revokeObjectURL(objectURL);
+        } catch (err) {
+            console.warn("during loadAndPlay ", err);
+        }
     } else {
         console.info("buffer was empty, waiting ...");
-        setTimeout(() => loadAndPlay(video, buffer), 10000);
+        setTimeout(() => loadAndPlay(video, buffer), loopRate);
     }
 }
 
@@ -53,9 +61,7 @@ function openGetSocket() {
         console.debug("GET-WebSocket  open initiated", webSocket);
 
         // Log errors
-        webSocket.onerror = function (error) {
-            console.error('GET-WebSocket Error', error);
-        };
+        webSocket.onerror = error => console.error('GET-WebSocket Error', error);
         return webSocket;
     } catch (error) {
         console.error('GET-WebSocket Error ', error);

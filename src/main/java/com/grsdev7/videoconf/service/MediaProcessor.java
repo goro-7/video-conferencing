@@ -56,10 +56,14 @@ public class MediaProcessor<T extends DataBuffer> extends BaseSubscriber<T> {
         }
         downstreamList.forEach(
                 session -> {
-                    session.send(toSocketMessageMono(session, value))
-                            .log()
-                            .doFinally(result -> log.info("type - {}", result))
-                            .subscribe();
+                    try {
+                        session.send(toSocketMessageMono(session, value))
+                                .log()
+                                .doFinally(result -> log.info("type - {}", result))
+                                .subscribe();
+                    } catch (Exception ex) {
+                        log.info("Send stream failed due to {} ", ex.getMessage());
+                    }
                 }
         );
         requestUnbounded();
@@ -67,7 +71,7 @@ public class MediaProcessor<T extends DataBuffer> extends BaseSubscriber<T> {
 
     @Override
     protected void hookOnComplete() {
-        log.info("Recieved complete from upstream ");
+        log.info("Received complete from upstream ");
         if (sink != null) {
             sink.complete();
         }
