@@ -1,17 +1,17 @@
 /* constants */
-const loopRate = 6000;
+const loopRate = 5000;
+const mediaRecorderRate = '${mediaRecorderRate}';
 const constraints = {
     video: true,
     audio: true
 };
 const options = {
-   // audioBitsPerSecond: 128000,
-   // videoBitsPerSecond: 2500000,
+    // audioBitsPerSecond: 128000,
+    // videoBitsPerSecond: 2500000,
     mimeType: 'video/webm'
 };
-let recording = false;
+let streaming = false;
 let webSocket;
-let camera;
 
 function generateUserId() {
     let userId = uuidv4();
@@ -36,18 +36,17 @@ $(document).ready(() => generateUserId());
 
 
 $(window).on("unload", () => {
-    recording = false;
-    stopOutgoingStream();
+    stopStreaming();
 });
 
 /* functions */
-async function startOutgoingStream() {
+async function startStreaming() {
     console.log("starting stream to server");
+    streaming = true;
     webSocket = openSendSocket();
     try {
-        camera = await navigator.mediaDevices.getUserMedia(constraints);
+        let camera = await navigator.mediaDevices.getUserMedia(constraints);
         recordAndSend(camera);
-        //startIncomingStream(webSocket);
         startIncomingStream(webSocket);
     } catch (err) {
         console.error("failed to get camera", err);
@@ -55,65 +54,45 @@ async function startOutgoingStream() {
 }
 
 
-function openSendSocket() {
-    try {
-        const userId = getUserId();
-        const url = ((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host + "/ws/send/" + getUserId();
-        console.info(`connecting ${url}`);
-        let webSocket = new WebSocket(url);
-        console.debug("webSocket open initiated", webSocket);
-        webSocket.onerror = errorEvent => {
-            console.error("socket error", errorEvent);
-            stopOutgoingStream();
-            alert("socket error, reload page");
-        };
-
-        webSocket.onclose = closeEvent => {
-            console.debug("socket closed", closeEvent);
-            stopOutgoingStream();
-            alert("socket closed, reload page");
-
-        };
-
-        return webSocket;
-    } catch (error) {
-        console.error('WebSocket Error ', error);
-    }
-}
-
 function recordAndSend(camera) {
     let mediaRecorder = new MediaRecorder(camera, options);
+
     try {
-        mediaRecorder.start();
+        mediaRecorder.start(loopRate);
     } catch (e) {
         console.warn("media start ", e);
         return;
     }
-    recording = true;
-    const buffer = [];
-    mediaRecorder.ondataavailable = event => buffer.push(event.data);
-    mediaRecorder.onstop = event => {
-        let blob = new Blob(buffer);
-        sendData(blob);
-        blob = null;
-        buffer.length = 0;
-    };
-    setTimeout(() => {
-            if (mediaRecorder.state === 'recording') {
-                mediaRecorder.stop();
-            }
-            recordAndSend(camera);
-        },
-        loopRate);
+
+    mediaRecorder.ondataavailable = event => sendData(mediaRecorder, event, camera);
+    mediaRecorder.onstop = event => sendData(mediaRecorder, event, camera);
+
+    /*    setTimeout(() => {
+
+                if (mediaRecorder.state === 'streaming' || mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                }
+
+                recordAndSend(camera);
+            },
+            loopRate);*/
 }
 
-function sendData(data) {
-    if (recording === false) {
-        return
+function sendData(mediaRecorder, event, camera) {
+    if (streaming === false) {
+        debug("got data but streaming flag is off so not sending it");
+        return;
     }
+
+    if (event.type !== 'dataavailable') {
+        return;
+    }
+
+    let data = event.data;
+
     if (data.size > 0) {
         if (webSocket.readyState === WebSocket.OPEN) {
-            console.info("sending data of size ", data.size);
+            console.debug("sending data of size ", data.size);
             try {
                 webSocket.send(data);
             } catch (error) {
@@ -125,6 +104,11 @@ function sendData(data) {
         }
         data = null;
     }
+    if(mediaRecorder.state === "recording"){
+        mediaRecorder.stop();
+    }
+
+    recordAndSend(camera);
 }
 
 /*
@@ -137,23 +121,25 @@ function notSupported() {
     }
 }*/
 
-function stopCamera() {
+async function stopCamera() {
+    let camera = await navigator.mediaDevices.getUserMedia(constraints);
     if (camera) {
+        info("closing camera");
         camera.getTracks().forEach(element => {
             element.stop();
         });
     }
 }
 
-function stopOutgoingStream() {
-    console.info("closing camera");
-    recording = false;
+function stopStreaming() {
+    info("stopping in & out streaming");
+    streaming = false;
     stopCamera();
     if (webSocket) {
         webSocket.close(1000, "User clicked disconnect");
     }
 }
 
-function isRecording() {
-    return recording === true;
+function streamingStopped() {
+    return streaming === false;
 }

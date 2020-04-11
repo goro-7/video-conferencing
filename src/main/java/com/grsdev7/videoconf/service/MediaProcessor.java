@@ -58,8 +58,8 @@ public class MediaProcessor<T extends DataBuffer> extends BaseSubscriber<T> {
                 session -> {
                     try {
                         session.send(toSocketMessageMono(session, value))
-                                .log()
-                                .doFinally(result -> log.info("type - {}", result))
+                                //.log()
+                                .doFinally(result -> log.debug("type - {}", result))
                                 .subscribe();
                     } catch (Exception ex) {
                         log.info("Send stream failed due to {} ", ex.getMessage());

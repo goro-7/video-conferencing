@@ -24,7 +24,7 @@ import static org.springframework.core.Ordered.HIGHEST_PRECEDENCE;
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
-public class WebSocketApplicationConfig {
+public class WebSocketConfig {
     private final InStreamHandler sendStreamHandler;
     private final OutStreamHandler outStreamHandler;
 

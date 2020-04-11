@@ -22,7 +22,7 @@ import java.time.Duration;
 import static com.grsdev7.videoconf.repository.IpAddressRepository.IP_ADDRESS_TO_USER_ID;
 import static com.grsdev7.videoconf.repository.UserRepositoryCacheImpl.USERS;
 import static com.grsdev7.videoconf.service.StreamService.STREAM;
-
+// todo remove caching support if it is not used ??
 @Slf4j
 @Configuration
 public class CaffeineCacheConfig {

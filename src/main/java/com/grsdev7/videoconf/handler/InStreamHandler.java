@@ -56,6 +56,7 @@ public class InStreamHandler implements WebSocketHandler {
     @Override
     public Mono<Void> handle(WebSocketSession session) {
         User user = saveUserSessionIfNew(session);
+        log.info("Got client message from {}", user.getId());
 
         Flux<WebSocketMessage> messageFlux = session.receive()
                 .doFinally(signalType -> this.removeUserSession(signalType, user.getId()));
